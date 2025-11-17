@@ -5,13 +5,15 @@ import random
 st.set_page_config(page_title="유튜브 댓글 추첨기", layout="wide")
 
 st.title("🎉 유튜브 댓글 추첨기 (YouTube Comment Picker)")
-st.write("YouTube API로 댓글을 조회하고, 무작위로 당첨자를 선택합니다.")
+st.write("YouTube Data API와 Streamlit을 활용한 안전한 댓글 추첨 도구입니다.")
 
-# 입력 폼
-api_key = st.text_input("🔑 YouTube API Key 입력", type="password")
+# 🔐 Streamlit Secret에서 API KEY 가져오기
+API_KEY = st.secrets["api"]["youtube_api_key"]
+
+# 입력: Video ID
 video_id = st.text_input("🎬 유튜브 Video ID 입력 (예: dQw4w9WgXcQ)")
 
-# 댓글 불러오기 함수
+# YouTube 댓글 불러오기 함수
 def get_comments(api_key, video_id):
     youtube = build("youtube", "v3", developerKey=api_key)
     comments = []
@@ -30,7 +32,7 @@ def get_comments(api_key, video_id):
             snippet = item["snippet"]["topLevelComment"]["snippet"]
             comments.append({
                 "author": snippet["authorDisplayName"],
-                "text": snippet["textDisplay"]
+                "text": snippet["textDisplay"],
             })
 
         next_page_token = response.get("nextPageToken")
@@ -40,29 +42,28 @@ def get_comments(api_key, video_id):
     return comments
 
 
-# 버튼 클릭 시 실행
+# 버튼 클릭 시 댓글 불러오기
 if st.button("📥 댓글 불러오기"):
-    if not api_key or not video_id:
-        st.error("API Key와 Video ID를 모두 입력해주세요.")
+    if not video_id:
+        st.error("Video ID를 입력해주세요.")
     else:
         with st.spinner("댓글을 불러오는 중입니다..."):
             try:
-                comments = get_comments(api_key, video_id)
-                st.success(f"총 {len(comments)}개의 댓글을 불러왔습니다!")
+                comments = get_comments(API_KEY, video_id)
                 st.session_state["comments"] = comments
+                st.success(f"총 {len(comments)}개의 댓글을 불러왔습니다!")
             except Exception as e:
                 st.error(f"오류 발생: {e}")
 
-# 추첨하기
+# 당첨자 추첨
 if "comments" in st.session_state:
     if st.button("🎯 당첨자 뽑기"):
         winner = random.choice(st.session_state["comments"])
-        st.subheader("🎉 당첨자 발표")
-        st.write(f"**작성자:** {winner['author']}")
-        st.write(f"**댓글 내용:**")
-        st.info(winner['text'])
+        st.subheader("🎉 당첨자 발표!")
+        st.write(f"👤 **작성자:** {winner['author']}")
+        st.info(f"💬 {winner['text']}")
 
-    # 원하면 전체 댓글도 보여줄 수 있음
+    # 전체 댓글 표시 (옵션)
     with st.expander("📄 전체 댓글 보기"):
         for c in st.session_state["comments"]:
             st.write(f"👤 **{c['author']}**: {c['text']}")
